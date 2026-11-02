@@ -3,6 +3,7 @@
 Run:  streamlit run app.py
 Needs GROQ_API_KEY in your environment / .env (free Groq key).
 """
+
 import streamlit as st
 
 from agent import pick_team
@@ -27,7 +28,11 @@ if st.button("Generate my XI", type="primary"):
     st.table(
         [
             {
-                "": "⭐" if p.player == team.captain else ("🔸" if p.player == team.vice_captain else ""),
+                "": (
+                    "⭐"
+                    if p.player == team.captain
+                    else ("🔸" if p.player == team.vice_captain else "")
+                ),
                 "Player": p.player,
                 "Role": p.role,
                 "Team": p.team,

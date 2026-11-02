@@ -4,6 +4,7 @@ LLMs reason well but slip on hard numeric/count constraints (credits, per-team
 caps). We never trust the model to police those — we check them in code, and
 feed any violations back for a single correction pass (see agent.pick_team).
 """
+
 from __future__ import annotations
 
 from collections import Counter
@@ -46,7 +47,9 @@ def validate_team(team) -> tuple[list[str], dict]:
     teams = Counter(PLAYERS[n]["team"] for n in known)
     for t, c in teams.items():
         if c > RULES["max_per_team"]:
-            issues.append(f"{c} players from {t} — max {RULES['max_per_team']} from one team")
+            issues.append(
+                f"{c} players from {t} — max {RULES['max_per_team']} from one team"
+            )
 
     if team.captain not in names:
         issues.append("captain is not in the XI")
@@ -68,7 +71,9 @@ def repair_credits(team: Team) -> Team:
     """
     names = [p.player for p in team.players]
     reasons = {p.player: p.reason for p in team.players}
-    original = {p.player: p for p in team.players}  # fall back to these for names not in squad data
+    original = {
+        p.player: p for p in team.players
+    }  # fall back to these for names not in squad data
     protected = {team.captain, team.vice_captain}
 
     def total(ns):
@@ -88,7 +93,8 @@ def repair_credits(team: Team) -> Team:
             for cand, cp in PLAYERS.items():
                 if cand in names or cp["role"] != role:
                     continue
-                trial = names.copy(); trial[i] = cand
+                trial = names.copy()
+                trial[i] = cand
                 if any(v > RULES["max_per_team"] for v in team_counts(trial).values()):
                     continue
                 saving = cost - cp["credits"]
@@ -114,18 +120,28 @@ def repair_credits(team: Team) -> Team:
     picks = []
     for n in names:
         if n in PLAYERS:
-            picks.append(Pick(player=n, team=PLAYERS[n]["team"], role=PLAYERS[n]["role"],
-                              reason=reasons.get(n, PLAYERS[n]["note"])))
+            picks.append(
+                Pick(
+                    player=n,
+                    team=PLAYERS[n]["team"],
+                    role=PLAYERS[n]["role"],
+                    reason=reasons.get(n, PLAYERS[n]["note"]),
+                )
+            )
         else:
             picks.append(original[n])
-    return Team(match=team.match, captain=team.captain, vice_captain=team.vice_captain,
-                players=picks, strategy=team.strategy)
+    return Team(
+        match=team.match,
+        captain=team.captain,
+        vice_captain=team.vice_captain,
+        players=picks,
+        strategy=team.strategy,
+    )
 
 
 def player_pool_text(match: str | None = None) -> str:
     """A compact 'name — TEAM, ROLE, credits' pool for the correction prompt."""
     lines = [
-        f"{n} — {p['team']}, {p['role']}, {p['credits']} cr"
-        for n, p in PLAYERS.items()
+        f"{n} — {p['team']}, {p['role']}, {p['credits']} cr" for n, p in PLAYERS.items()
     ]
     return "\n".join(lines)

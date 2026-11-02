@@ -7,6 +7,7 @@ captain, vice-captain and a reason for every pick.
 
 Needs a free Groq API key in the environment as GROQ_API_KEY (see .env.example).
 """
+
 from __future__ import annotations
 
 import os
@@ -70,7 +71,7 @@ def build_agent():
     return create_agent(_llm(), TOOLS, system_prompt=SYSTEM)
 
 
-def pick_team(match: str, verbose: bool = False) -> Team:
+def pick_team(match: str, verbose: bool = True) -> Team:
     """Run the agent end-to-end for a fixture and return a structured Team.
 
     Two steps: (1) the ReAct agent gathers data and reasons to a textual answer,
@@ -111,8 +112,9 @@ def pick_team(match: str, verbose: bool = False) -> Team:
     # Formatting is not the part that needs deep reasoning, so we cap it and give
     # the answer room. Measured on the repair prompt: 3 failures in 7 runs on the
     # defaults, 0 in 7 with these two arguments.
-    structurer = _llm(temperature=0, reasoning_effort="low", max_tokens=4000) \
-        .with_structured_output(Team, method="json_schema", strict=True)
+    structurer = _llm(
+        temperature=0, reasoning_effort="low", max_tokens=4000
+    ).with_structured_output(Team, method="json_schema", strict=True)
     team = structurer.invoke(
         "Convert the following fantasy-cricket recommendation into the required "
         f"structured format for the match '{match}'. Keep the same 11 players, "
@@ -127,7 +129,9 @@ def pick_team(match: str, verbose: bool = False) -> Team:
     while issues and attempts < 2:
         attempts += 1
         if verbose:
-            print(f"⚠️  Draft XI invalid ({'; '.join(issues)}) — correcting (pass {attempts})…")
+            print(
+                f"[WARN] Draft XI invalid ({'; '.join(issues)}) — correcting (pass {attempts})…"
+            )
         team = structurer.invoke(_fix_prompt(match, team, issues))
         issues, _ = validate_team(team)
 
@@ -137,8 +141,11 @@ def pick_team(match: str, verbose: bool = False) -> Team:
         team = repair_credits(team)
         issues, _ = validate_team(team)
         if verbose:
-            print("🔧 Applied deterministic credit repair." if not issues
-                  else f"⚠️  Remaining after repair: {'; '.join(issues)}")
+            print(
+                "[INFO] Applied deterministic credit repair."
+                if not issues
+                else f"[WARN] Remaining after repair: {'; '.join(issues)}"
+            )
     return team
 
 
@@ -155,17 +162,19 @@ def _fix_prompt(match: str, team: Team, issues: list) -> str:
 
 
 def _print_trace(messages) -> None:
-    """Print a readable think → tool → observe trace (what LangSmith shows visually)."""
+    """Print a readable think -> tool -> observe trace (what LangSmith shows visually)."""
     print("\n===== AGENT TRACE =====")
     for m in messages:
         role = m.__class__.__name__.replace("Message", "").upper()
         tool_calls = getattr(m, "tool_calls", None)
         if tool_calls:
             for tc in tool_calls:
-                print(f"[{role}] → ACTION {tc['name']}({tc['args']})")
+                print(f"[{role}] -> ACTION {tc['name']}({tc['args']})")
         elif role == "TOOL":
             content = str(m.content)
-            print(f"[TOOL] OBSERVATION: {content[:200]}{'…' if len(content) > 200 else ''}")
+            print(
+                f"[TOOL] OBSERVATION: {content[:200]}{'…' if len(content) > 200 else ''}"
+            )
         elif m.content:
             content = str(m.content)
             print(f"[{role}] {content[:300]}{'…' if len(content) > 300 else ''}")

@@ -7,6 +7,7 @@ unit-test; LangGraph wraps them into tools automatically in agent.py.
 Right now they read baked-in sample data (data.py). To go live, replace the
 bodies with real API calls — the signatures stay identical, so nothing else changes.
 """
+
 from __future__ import annotations
 
 from data import PLAYERS, SQUADS, PITCH, FORM
@@ -22,7 +23,11 @@ def _find_player(name: str):
         if full.lower() == q:
             return full, stats
     # substring / last-name match
-    matches = [(f, s) for f, s in PLAYERS.items() if q in f.lower() or q in f.lower().split()[-1]]
+    matches = [
+        (f, s)
+        for f, s in PLAYERS.items()
+        if q in f.lower() or q in f.lower().split()[-1]
+    ]
     if len(matches) == 1:
         return matches[0]
     return None, None
@@ -38,7 +43,9 @@ def get_match_squads(match: str) -> dict:
     if key not in SQUADS:
         # try a loose match on the code pair
         for k in SQUADS:
-            if set(k.lower().replace(" vs ", " ").split()) == set(key.lower().replace(" vs ", " ").split()):
+            if set(k.lower().replace(" vs ", " ").split()) == set(
+                key.lower().replace(" vs ", " ").split()
+            ):
                 key = k
                 break
     if key not in SQUADS:
@@ -55,7 +62,9 @@ def get_player_stats(player: str) -> dict:
     """
     full, stats = _find_player(player)
     if not stats:
-        return {"error": f"No stats found for '{player}'. Use a name from get_match_squads."}
+        return {
+            "error": f"No stats found for '{player}'. Use a name from get_match_squads."
+        }
     return {"name": full, **stats}
 
 
