@@ -21,7 +21,7 @@ from tools import TOOLS
 from validate import validate_team, player_pool_text, repair_credits
 
 # Find a .env by walking up from the current directory (so it works whether the
-# key sits in this project folder or a parent course folder).
+# key sits in this project folder or a parent folder).
 load_dotenv(find_dotenv(usecwd=True))
 
 # Groq (free tier) with LangGraph. openai/gpt-oss-120b is Groq's flagship
@@ -100,7 +100,7 @@ def pick_team(match: str, verbose: bool = True) -> Team:
     #     emit off-schema text. Without it, schema adherence is only best-effort
     #     and a long nested payload like Team can come back json_validate_failed.
     # Strict mode is Groq-side and only exists on openai/gpt-oss-*; on other
-    # models it is silently ignored. That is why this course pins gpt-oss-120b.
+    # models it is silently ignored. That is why this pins gpt-oss-120b.
     # reasoning_effort="low" + max_tokens matter here, and for a reason worth
     # understanding. gpt-oss-120b is a REASONING model: it spends output tokens
     # thinking before it writes. Step 3 below hands it a genuine constraint puzzle
