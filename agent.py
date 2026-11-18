@@ -11,14 +11,20 @@ Needs a free Groq API key in the environment as GROQ_API_KEY (see .env.example).
 from __future__ import annotations
 
 import os
+import sys
 
 from dotenv import load_dotenv, find_dotenv
-from langchain_groq import ChatGroq
+from langchain.chat_models import init_chat_model
+from langchain_core.language_models import BaseChatModel
 from langchain.agents import create_agent
 
 from schema import Team
 from tools import TOOLS
 from validate import validate_team, player_pool_text, repair_credits
+
+# Windows' default console encoding may not support Unicode in model output.
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 # Find a .env by walking up from the current directory (so it works whether the
 # key sits in this project folder or a parent folder).
@@ -61,9 +67,11 @@ strategy. Back the picks the data supports, not big names who are out of form.
 # else on your key. langchain-groq defaults to 2 retries, which is not enough for
 # a long run; the Groq SDK honours the retry-after header, so raising this simply
 # waits out the window instead of failing the whole run.
-def _llm(temperature: float = 0.2, **kwargs) -> ChatGroq:
+def _llm(temperature: float = 0.2, **kwargs) -> BaseChatModel:
     kwargs.setdefault("max_retries", 8)
-    return ChatGroq(model=MODEL, temperature=temperature, **kwargs)
+    return init_chat_model(
+        MODEL, model_provider="groq", temperature=temperature, **kwargs
+    )
 
 
 def build_agent():
@@ -130,7 +138,8 @@ def pick_team(match: str, verbose: bool = True) -> Team:
         attempts += 1
         if verbose:
             print(
-                f"[WARN] Draft XI invalid ({'; '.join(issues)}) — correcting (pass {attempts})…"
+                f"[WARN] Draft XI invalid ({'; '.join(issues)}) — correcting (pass {attempts})…",
+                flush=True,
             )
         team = structurer.invoke(_fix_prompt(match, team, issues))
         issues, _ = validate_team(team)
@@ -142,9 +151,12 @@ def pick_team(match: str, verbose: bool = True) -> Team:
         issues, _ = validate_team(team)
         if verbose:
             print(
-                "[INFO] Applied deterministic credit repair."
-                if not issues
-                else f"[WARN] Remaining after repair: {'; '.join(issues)}"
+                (
+                    "[INFO] Applied deterministic credit repair."
+                    if not issues
+                    else f"[WARN] Remaining after repair: {'; '.join(issues)}"
+                ),
+                flush=True,
             )
     return team
 
@@ -163,19 +175,23 @@ def _fix_prompt(match: str, team: Team, issues: list) -> str:
 
 def _print_trace(messages) -> None:
     """Print a readable think -> tool -> observe trace (what LangSmith shows visually)."""
-    print("\n===== AGENT TRACE =====")
+    print("\n===== AGENT TRACE =====", flush=True)
     for m in messages:
         role = m.__class__.__name__.replace("Message", "").upper()
         tool_calls = getattr(m, "tool_calls", None)
         if tool_calls:
             for tc in tool_calls:
-                print(f"[{role}] -> ACTION {tc['name']}({tc['args']})")
+                print(f"[{role}] -> ACTION {tc['name']}({tc['args']})", flush=True)
         elif role == "TOOL":
             content = str(m.content)
             print(
-                f"[TOOL] OBSERVATION: {content[:200]}{'…' if len(content) > 200 else ''}"
+                f"[TOOL] OBSERVATION: {content[:200]}{'…' if len(content) > 200 else ''}",
+                flush=True,
             )
         elif m.content:
             content = str(m.content)
-            print(f"[{role}] {content[:300]}{'…' if len(content) > 300 else ''}")
-    print("===== END TRACE =====\n")
+            print(
+                f"[{role}] {content[:300]}{'…' if len(content) > 300 else ''}",
+                flush=True,
+            )
+    print("===== END TRACE =====\n", flush=True)
